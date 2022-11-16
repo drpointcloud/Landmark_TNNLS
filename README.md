@@ -11,3 +11,10 @@ Landmark TNNLS paper
 We require the following dependencies:
 
 Failing loudly: https://github.com/steverab/failing-loudly
+keras: https://github.com/keras-team/keras
+tensorflow: https://github.com/tensorflow/tensorflow
+pytorch: https://github.com/pytorch/pytorch
+sklearn: https://github.com/scikit-learn/scikit-learn
+matplotlib: https://github.com/matplotlib/matplotlib
+torch-two-sample: https://github.com/josipd/torch-two-sample
+keras-resnet: https://github.com/broadinstitute/keras-resnet

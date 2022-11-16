@@ -27,11 +27,15 @@ matplotlib: https://github.com/matplotlib/matplotlib
 # Configuration <br>
 Dataset is provided by fail_loudly repo.
 
-Things that an be configured <br>
+Things that can be configured <br>
 * DR methods,
 * Sample size,
 * Number of rundom runs,
 * Significance level.
 
-Datasets
-While some datasets are already part of the Keras distribution (like MNIST, CIFAR10, and Fashion MNIST), other datasets we tested against are not directly provided. That's why we provide external datasets in the datasets directory for your convenience.
+
+
+# Run
+
+To run Landmark with Fail loudly repo,
+* First download or clone the repo and change .py files listed in 

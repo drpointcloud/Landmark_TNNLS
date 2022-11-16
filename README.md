@@ -30,10 +30,10 @@ matplotlib: https://github.com/matplotlib/matplotlib
 Dataset is provided by fail_loudly repo.
 
 Things that can be configured <br>
-* DR methods,
-* Sample size,
-* Number of rundom runs,
-* Significance level.
+* DR methods
+* Sample size
+* Number of rundom runs
+* Significance level
 
 
 

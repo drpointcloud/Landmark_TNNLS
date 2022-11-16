@@ -7,7 +7,9 @@
 * We showed our proposed method could detect shifts locally, where the baseline method MMD explains the data globally. 
 
 
-# Dependencies
+# Learning Representations
+
+## Dependencies 
 
 * We require the followings<br>
 fail loudly: https://github.com/steverab/failing-loudly<br>
@@ -24,7 +26,7 @@ sklearn: https://github.com/scikit-learn/scikit-learn<br>
 matplotlib: https://github.com/matplotlib/matplotlib
 
 
-# Configuration <br>
+## Configuration <br>
 Dataset is provided by fail_loudly repo.
 
 Things that can be configured <br>
@@ -35,7 +37,7 @@ Things that can be configured <br>
 
 
 
-# Run
+## Run
 
 To run Landmark with Fail loudly repo,
 * First download or clone the Fail loudly repo and change those .py files with .py files python_failoudly_landmark folder. 

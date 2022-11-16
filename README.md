@@ -41,4 +41,5 @@ Things that can be configured <br>
 
 To run Landmark with Fail loudly repo,
 * First download or clone the Fail loudly repo and change those .py files with .py files python_failoudly_landmark folder. 
-* `run_pipeline.py` is provided to run all confifurations once.
+* Run `run_pipeline.py` is provided to run all confifurations once.
+* Make sure to change `Sign Level` and `Random Runs` in `pipeline_landmark.py`

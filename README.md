@@ -1,4 +1,4 @@
-# landmark
+# Landmark
 
 
 * A new approach, a max landmark-sliced kernel, is presented to compute Wasserstein distance. 

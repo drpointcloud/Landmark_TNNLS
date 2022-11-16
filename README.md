@@ -10,21 +10,15 @@
 # Dependencies
 
 * We require the following<br>
-fail loudly: https://github.com/steverab/failing-loudly
-
-torch-two-sample: https://github.com/josipd/torch-two-sample
-
-keras-resnet: https://github.com/broadinstitute/keras-resnet
+fail loudly: https://github.com/steverab/failing-loudly<br>
+torch-two-sample: https://github.com/josipd/torch-two-sample<br>
+keras-resnet: https://github.com/broadinstitute/keras-resnet<br>
 
 
 
-* We require the following dependencies:
-keras: https://github.com/keras-team/keras
-
-tensorflow: https://github.com/tensorflow/tensorflow
-
-pytorch: https://github.com/pytorch/pytorch
-
-sklearn: https://github.com/scikit-learn/scikit-learn
-
+* We require the following dependencies:<br>
+keras: https://github.com/keras-team/keras<br>
+tensorflow: https://github.com/tensorflow/tensorflow<br>
+pytorch: https://github.com/pytorch/pytorch<br>
+sklearn: https://github.com/scikit-learn/scikit-learn<br>
 matplotlib: https://github.com/matplotlib/matplotlib

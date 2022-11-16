@@ -9,7 +9,7 @@
 
 # Dependencies
 
-* We require the following<br>
+* We require the followings<br>
 fail loudly: https://github.com/steverab/failing-loudly<br>
 torch-two-sample: https://github.com/josipd/torch-two-sample<br>
 keras-resnet: https://github.com/broadinstitute/keras-resnet<br>

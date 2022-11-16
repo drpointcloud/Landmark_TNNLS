@@ -38,4 +38,5 @@ Things that can be configured <br>
 # Run
 
 To run Landmark with Fail loudly repo,
-* First download or clone the repo and change .py files listed in 
+* First download or clone the Fail loudly repo and change those .py files with .py files python_failoudly_landmark folder. 
+* `run_pipeline.py` is provided to run all confifurations once without using terminal.

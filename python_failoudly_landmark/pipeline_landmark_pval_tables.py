@@ -1,3 +1,5 @@
+# get from https://github.com/steverab/failing-loudly
+# may/might have been modified
 # -------------------------------------------------
 # IMPORTS
 # sample size for multiv is changed[line 140s]

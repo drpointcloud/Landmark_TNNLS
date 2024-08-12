@@ -1,3 +1,5 @@
+# get from https://github.com/steverab/failing-loudly
+# may/might have been modified
 # -------------------------------------------------
 # IMPORTS
 # -------------------------------------------------

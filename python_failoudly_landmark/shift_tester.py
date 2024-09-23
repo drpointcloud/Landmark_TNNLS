@@ -176,22 +176,33 @@ class ShiftTester:
         if self.mt == MultidimensionalTest.MMD:
             mmd_test = MMDStatistic(len(X_tr), len(X_te))
 
-            # As per the original MMD paper, the median distance between all points in the aggregate sample from both
-            # distributions is a good heuristic for the kernel bandwidth, which is why compute this distance here.
-            if len(X_tr.shape) == 1:
-                X_tr = X_tr.reshape((len(X_tr),1))
-                X_te = X_te.reshape((len(X_te),1))
-                all_dist = distance.cdist(X_tr, X_te, 'euclidean')
-            else:
-                all_dist = distance.cdist(X_tr, X_te, 'euclidean')
-            median_dist = np.median(all_dist)
+            # original code ################################################################
+            # # As per the original MMD paper, the median distance between all points in the aggregate sample from both
+            # # distributions is a good heuristic for the kernel bandwidth, which is why compute this distance here.
+            # if len(X_tr.shape) == 1:
+            #     X_tr = X_tr.reshape((len(X_tr),1))
+            #     X_te = X_te.reshape((len(X_te),1))
+            #     all_dist = distance.cdist(X_tr, X_te, 'euclidean')
+            # else:
+            #     all_dist = distance.cdist(X_tr, X_te, 'euclidean')
+            # median_dist = np.median(all_dist)
 
+            # # Calculate MMD.
+            # t_val, matrix = mmd_test(torch.autograd.Variable(torch.tensor(X_tr)),
+            #                          torch.autograd.Variable(torch.tensor(X_te)),
+            #                          alphas=[1/median_dist], ret_matrix=True)
+            # p_val = mmd_test.pval(matrix)
+            ################################################################
+
+            # The correct median kernel size calculation below
+            Z = (np.concatenate((X_tr,X_te),axis=0)) # combine two samples
+            _,median_dist = gaussian_kernel(Z)
             # Calculate MMD.
             t_val, matrix = mmd_test(torch.autograd.Variable(torch.tensor(X_tr)),
                                      torch.autograd.Variable(torch.tensor(X_te)),
-                                     alphas=[1/median_dist], ret_matrix=True)
+                                     alphas=[1/(2*median_dist**2)], ret_matrix=True)
             p_val = mmd_test.pval(matrix)
-
+            
         elif self.mt == MultidimensionalTest.Energy:
             energy_test = EnergyStatistic(len(X_tr), len(X_te))
             t_val, matrix = energy_test(torch.autograd.Variable(torch.tensor(X_tr)),

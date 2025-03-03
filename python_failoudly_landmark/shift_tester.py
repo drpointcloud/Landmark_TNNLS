@@ -21,6 +21,11 @@ from scipy.spatial import distance
 from scipy import sparse
 from shared_utils import *
 
+# new ones AJB
+from scipy import sparse
+from numba import jit, njit, prange
+import ot
+
 
 # -------------------------------------------------
 # SHIFT TESTER
@@ -97,63 +102,6 @@ class ShiftTester:
             elif self.ot == OnedimensionalTest.AD:
                 t_val, _, p_val = anderson_ksamp([feature_tr.tolist(), feature_te.tolist()])
                 #print("second possible: ", p_val)
-
-
-            # added ##################################################################>
-            elif self.ot == OnedimensionalTest.LMSW:
-                Z = np.atleast_2d(np.transpose(np.concatenate((feature_tr,feature_te),axis=0))) # combine two samples
-                x_idx = np.concatenate((np.ones(feature_tr.shape[0]),np.zeros(feature_te.shape[0])),axis=0).astype(np.bool) #bool indicator
-                #np.array([1, 0, 1, 0]).astype(np.bool)
-                K,sigma = self.gaussian_kernel(np.transpose(Z))
-                m = np.sum(x_idx)
-                n = K.shape[0] - m # sample size for Y
-                K = (K + np.transpose(K))/2 #  ensure symmetric  (doesn't ensure PSD)
-                K_X_Z  = K[ x_idx, :]
-                K_Y_Z  = K[~x_idx, :]
-
-                if m==n:  # assumes the X and Y are equal size 
-                    landmark_divs = np.mean(np.square(np.sort(K_X_Z,axis=0) - np.sort(K_Y_Z,axis=0)) ,axis=0); 
-                else: #if m is not equal to n, mass spliting applied for exact corresponding
-                    m_part = self.linear_space(0,1,1/m) #lispace(start,stop,step)
-                    n_part = self.linear_space(0,1,1/n)
-                    G = np.minimum(np.atleast_2d(m_part).T,np.atleast_2d(n_part))
-                    P = np.diff(np.diff(G,axis=0),axis=1)  #matlab: diff(data,nth order,dimention)
-                    landmark_divs = np.mean(np.square(K_X_Z),axis=0)+ np.mean(np.square(K_Y_Z),axis=0)- 2*np.sum(np.multiply((np.transpose(P)@np.sort(K_X_Z,axis=0)),np.sort(K_Y_Z,axis=0)) ,axis=0)
-
-                idx = np.unravel_index(np.argmax(landmark_divs, axis=None), landmark_divs.shape)
-                max_val = np.nanmax(landmark_divs)
-                div_max = np.sqrt(np.maximum(0,max_val))
-                #div_mean = mean(landmark_divs,'omitnan')
-                #divs = div_max;#%[div_max div_mean]
-                alphas = np.zeros(np.size(K,axis=0))
-                alphas[idx] = 1
-                V = K@alphas
-                #return div_max
-
-                
-                tests = 1000
-                if (tests>1):
-                    shuffled_tests = np.zeros((tests,1))
-                    K_tilde = np.sort(K,axis=0)
-                    if m==n:
-                        for t in range(tests):
-                            rand_perm = x_idx[np.random.permutation(len(x_idx))] #bool
-                            #p2(t,:) = sqrt(max(0,max(mean((K_tilde(rand_perm,:) - K_tilde(~rand_perm,:)).^2,1))));
-                            shuffled_tests[t] = np.sqrt(np.maximum(0,np.max(np.mean(np.square(K_tilde[rand_perm,:] - K_tilde[~rand_perm,:]),axis=0))))
-                    else:
-                        for t in range(tests):
-                            rand_perm = x_idx[np.random.permutation(len(x_idx))]
-                            KXZ = K_tilde[rand_perm,:]
-                            KYZ = K_tilde[~rand_perm,:]
-                            #sqrt(max(0,max(mean(KXZ.^2,1) + mean(KYZ.^2,1) - 2*sum((P'*KXZ).*KYZ,1))));
-                            shuffled_tests[t] = np.sqrt(np.maximum(0,np.maximum(np.mean(np.square(KXZ),axis=0) + np.mean(np.square(KYZ),axis=0) - 2*np.sum((np.transpose(P)*KXZ)@KYZ,axis=0) )))
-                    
-                p_val = np.mean(shuffled_tests>=div_max)
-                #print("third possible: ", p_val)
-
-
-
-
             p_vals.append(p_val)
 
         # Apply the Bonferroni correction to bound the family-wise error rate. This can be done by picking the minimum
@@ -173,6 +121,26 @@ class ShiftTester:
         p_val = None
 
         # We provide a couple of different tests, although we only report results for MMD in the paper.
+        if self.mt == MultidimensionalTest.MMD_bug:
+            mmd_test = MMDStatistic(len(X_tr), len(X_te))
+
+            # As per the original MMD paper, the median distance between all points in the aggregate sample from both
+            # distributions is a good heuristic for the kernel bandwidth, which is why compute this distance here.
+            if len(X_tr.shape) == 1:
+                X_tr = X_tr.reshape((len(X_tr),1))
+                X_te = X_te.reshape((len(X_te),1))
+                all_dist = distance.cdist(X_tr, X_te, 'euclidean')
+            else:
+                all_dist = distance.cdist(X_tr, X_te, 'euclidean')
+            median_dist = np.median(all_dist)
+
+            # Calculate MMD.
+            t_val, matrix = mmd_test(torch.autograd.Variable(torch.tensor(X_tr)),
+                                     torch.autograd.Variable(torch.tensor(X_te)),
+                                     alphas=[1/median_dist], ret_matrix=True)
+            p_val = mmd_test.pval(matrix)
+            ###############################################################
+
         if self.mt == MultidimensionalTest.MMD:
             mmd_test = MMDStatistic(len(X_tr), len(X_te))
 
@@ -196,7 +164,7 @@ class ShiftTester:
 
             # The correct median kernel size calculation below
             Z = (np.concatenate((X_tr,X_te),axis=0)) # combine two samples
-            _,median_dist = gaussian_kernel(Z)
+            _,median_dist = self.gaussian_kernel(Z)
             # Calculate MMD.
             t_val, matrix = mmd_test(torch.autograd.Variable(torch.tensor(X_tr)),
                                      torch.autograd.Variable(torch.tensor(X_te)),
@@ -226,6 +194,13 @@ class ShiftTester:
 
 
         # added ##################################################################>
+        elif self.mt == MultidimensionalTest.MLW:
+            Z = (np.concatenate((X_tr,X_te),axis=0)) # combine two samples
+            x_idx = np.concatenate((np.ones(X_tr.shape[0]),np.zeros(X_te.shape[0])),axis=0).astype(np.bool) #bool indicator
+            #np.array([1, 0, 1, 0]).astype(np.bool)
+            K,sigma = self.gaussian_kernel(Z)
+            idx, div, p_val = MLW(K, x_idx, p_W=2, permutations=1000)
+
         elif self.mt == MultidimensionalTest.LMSW:
                 
             Z = (np.concatenate((X_tr,X_te),axis=0)) # combine two samples
@@ -233,6 +208,7 @@ class ShiftTester:
             #np.array([1, 0, 1, 0]).astype(np.bool)
 
             K,sigma = self.gaussian_kernel(Z)
+
             m = np.sum(x_idx)
             n = K.shape[0] - m # sample size for Y
 
@@ -243,8 +219,8 @@ class ShiftTester:
             K_Y_Z  = K[~x_idx, :]
 
             if m==n:  # assumes the X and Y are equal size
-                #landmark_divs = mean( (sort(K_X_Z) - sort(K_Y_Z)).^2 , 1);    
-                landmark_divs = np.mean(np.square(np.sort(K_X_Z,axis=0) - np.sort(K_Y_Z,axis=0)) ,axis=0); 
+                #landmark_divs = mean( (sort(K_X_Z) - sort(K_Y_Z)).^2 , 1);
+                landmark_divs = np.mean(np.square(np.sort(K_X_Z,axis=0) - np.sort(K_Y_Z,axis=0)) ,axis=0);
             else: #if m is not equal to n, mass spliting applied for exact corresponding
                 m_part = self.linear_space(0,1,1/m) #lispace(start,stop,step)
                 n_part = self.linear_space(0,1,1/n)
@@ -262,36 +238,35 @@ class ShiftTester:
             alphas[idx] = 1
             V = K@alphas
             #return div_max
-            
+
             tests = 1000
             if (tests>1):
                 shuffled_tests = np.zeros((tests,1))
-                K_tilde = np.sort(K,axis=0)
+#                K_tilde = np.sort(K,axis=0)
                 if m==n:
                     for t in range(tests):
                         rand_perm = x_idx[np.random.permutation(len(x_idx))] #bool
                         #p2(t,:) = sqrt(max(0,max(mean((K_tilde(rand_perm,:) - K_tilde(~rand_perm,:)).^2,1))));
-                        shuffled_tests[t] = np.sqrt(np.maximum(0,np.max(np.mean(np.square(K_tilde[rand_perm,:] - K_tilde[~rand_perm,:]),axis=0))))
+                        shuffled_tests[t] = np.sqrt(np.maximum(0,np.max(np.mean(np.square(np.sort(K[rand_perm,:],axis=0) - np.sort(K[~rand_perm,:],axis=0)),axis=0))))
                 else:
                     for t in range(tests):
                         rand_perm = x_idx[np.random.permutation(len(x_idx))]
-                        KXZ = K_tilde[rand_perm,:]
-                        KYZ = K_tilde[~rand_perm,:]
+                        KXZ = np.sort(K[rand_perm,:],axis=0)
+                        KYZ = np.sort(K[~rand_perm,:],axis=0)
                         #sqrt(max(0,max(mean(KXZ.^2,1) + mean(KYZ.^2,1) - 2*sum((P'*KXZ).*KYZ,1))));
                         shuffled_tests[t] = np.sqrt(np.maximum([0],np.max(np.mean(np.square(KXZ),axis=0) + np.mean(np.square(KYZ),axis=0) - 2*np.sum((np.transpose(P)*KXZ)@KYZ,axis=0) )))
-                
+
             p_val = np.mean(shuffled_tests>=div_max)
-            p_vals = np.array(p_val)
-    
-        return p_val, None , landmark_divs, V
+
+        return p_val
 
 
     # added ##################################################################
-    def gaussian_kernel(self, X):# assumes the sigma is median 
+    def gaussian_kernel(self, X):# assumes the sigma is median
         n,d = X.shape # [n,d] = size(X);# Assume Gaussian kernel
         # sigma2 = np.logspace(-4,4,30) # %sigma2s = logspace(-4,4,30);
         # D2 = max(0,  -2*(X*X.') + sum(X.^2,2) + sum(X.^2,2).'); # % Rely on squared Euclidean distances
-        D2 = np.maximum(0,-2*(X@np.transpose(X)) + np.sum(np.square(X),axis=1) + np.transpose(np.sum(np.square(X),axis=1))) 
+        D2 = np.maximum(0,-2*(X@np.transpose(X)) + np.sum(np.square(X),axis=1) + np.transpose(np.sum(np.square(X),axis=1)))
         sigma = np.nanmedian(np.ravel(np.sqrt(D2)+ sparse.spdiags(nan,0,n,n)))
 
         if sigma.size == 1:
@@ -313,7 +288,77 @@ class ShiftTester:
         """
         return np.linspace(start, stop, int((stop - start) / step + 1))
         # added ##################################################################
-            
-        
 
 
+
+
+# Uses sorts on each permutation but Numba to accelerate
+def MLW(K,x_idx,p_W=2,permutations=None):
+    m = np.sum(x_idx)
+    n = len(x_idx)-m
+
+    K_X_Z = K[x_idx==1, :]
+    K_Y_Z = K[x_idx==0, :]
+    landmark_idx,div = MLW_sorted(np.sort(K_X_Z,axis=0),np.sort(K_Y_Z,axis=0),p_W)
+    if permutations is not None:
+        if m==n:
+            shuffled_tests = permute_MLW_balanced2(K,x_idx,p_W,permutations)
+        else:
+            acute_p, acute_i, acute_j = northwest_corner_rule_iid(m,n)
+            shuffled_tests = permute_MLW2(K,x_idx,p_W,permutations,acute_p,acute_i,acute_j)
+        pvalue = np.mean(div<=shuffled_tests)
+        return landmark_idx, div, pvalue
+    else:
+        return landmark_idx, div
+
+def northwest_corner_rule_iid(m,n):
+    # for sorted don't need data
+    acute_p,acute_indices,_ = ot.lp.emd_wrap.emd_1d_sorted(
+        np.full(m,1/m),np.full(n,1/n),1.0+np.arange(m),1.0+np.arange(n))
+    acute_i, acute_j = acute_indices[:,0],acute_indices[:,1]
+    return acute_p, acute_i, acute_j
+
+
+@njit(parallel=True, fastmath=True)
+def permute_MLW_balanced2(K,x_idx,p_W,permutations):
+    shuffled_tests = np.zeros((permutations, 1))
+    for b in prange(permutations):
+        new_x_idx = x_idx[np.random.permutation(len(x_idx))]
+        per_landmark = 0 # np.zeros(m+n)
+        m = np.sum(x_idx)
+        n = len(x_idx) - m
+        for k in prange(m+n):
+#            per_landmark[k] = np.mean(np.abs(np.sort(K[new_x_idx,k]) - np.sort(K[~new_x_idx,k]))**p_W)
+            per_landmark = np.maximum(per_landmark, np.mean(np.abs(np.sort(K[new_x_idx==1,k]) - np.sort(K[new_x_idx==0,k]))**p_W))
+        shuffled_tests[b] = per_landmark#np.max(per_landmark)
+
+    return shuffled_tests
+
+
+
+@njit(parallel=True, fastmath=True)
+def permute_MLW2(K,x_idx,p_W,permutations,acute_p,acute_i,acute_j):
+    shuffled_tests = np.zeros((permutations, 1))
+    m = np.sum(x_idx)
+    n = len(x_idx)-m
+    for b in prange(permutations):
+        new_x_idx = x_idx[np.random.permutation(len(x_idx))]
+        per_landmark = np.zeros(m+n)
+        for k in prange(m+n):
+            per_landmark[k] = np.dot(np.abs(np.sort(K[new_x_idx==1,k])[acute_i] - np.sort(K[new_x_idx==0,k])[acute_j] )**p_W,acute_p)
+        shuffled_tests[b] = np.max(per_landmark)
+    return shuffled_tests
+
+
+def MLW_sorted(K_X_Z, K_Y_Z, p_W):
+    m = K_X_Z.shape[0]
+    n = K_Y_Z.shape[0]
+
+    if m==n:
+        landmark_divs = np.mean(np.abs(K_X_Z - K_Y_Z)**p_W, axis=0)
+    else:
+        acute_p, acute_i, acute_j = northwest_corner_rule_iid(m,n)
+        landmark_divs = (acute_p[:,np.newaxis].T@np.abs(K_X_Z[acute_i]-K_Y_Z[acute_j])**p_W).squeeze()
+
+    landmark_idx = np.argmax(landmark_divs)
+    return landmark_idx, landmark_divs[landmark_idx]

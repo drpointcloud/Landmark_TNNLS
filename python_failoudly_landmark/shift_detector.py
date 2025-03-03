@@ -42,8 +42,6 @@ class ShiftDetector:
         md_decs = np.ones(len(self.dr_techniques)) * (-1)
         ind_md_decs = np.ones((len(self.dr_techniques), len(self.md_tests))) * (-1)
         ind_md_p_vals = np.ones((len(self.dr_techniques), len(self.md_tests))) * (-1)
-        ind_md_landmark_divs = np.ones((len(self.dr_techniques), len(self.md_tests), 2*self.sample)) * (-1)
-        ind_md_V = np.ones((len(self.dr_techniques), len(self.md_tests), 2*self.sample)) * (-1)
 
         red_dim = -1
         
@@ -96,10 +94,9 @@ class ShiftDetector:
                 if test_type == TestDimensionality.Multi.value:
                     for md_test in self.md_tests:
                         shift_tester = ShiftTester(TestDimensionality(test_type), sign_level=self.sign_level, mt=MultidimensionalTest(md_test))
-                        p_val, _ ,landmark_divs,V = shift_tester.test_shift(X_tr_red[:self.sample], X_te_red)
+                        p_val = shift_tester.test_shift(X_tr_red[:self.sample], X_te_red)
+                        print(p_val)
                         md_loc_p_vals.append(p_val)
-                        md_loc_landmark_divs.append(landmark_divs)
-                        md_loc_V.append(V)
 
             if dr_technique != DimensionalityReduction.BBSDh.value:
                 # Lower the significance level for all tests (Bonferroni) besides BBSDh, which needs no correction.
@@ -129,11 +126,9 @@ class ShiftDetector:
                 md_decs[dr_ind] = np.max(md_loc_decs)
                 ind_md_decs[dr_ind, :] = md_loc_decs
                 ind_md_p_vals[dr_ind, :] = np.array(md_loc_p_vals)
-                ind_md_landmark_divs[dr_ind, :] = np.array(md_loc_landmark_divs)
-                ind_md_V[dr_ind, :] = np.array(md_loc_V)
 
             elapsed = time.time() - t
             print("%s     elapsed time: %s" %(DimensionalityReduction(dr_technique).name,elapsed))
 
-        return (od_decs, ind_od_decs, ind_od_p_vals), (md_decs, ind_md_decs, ind_md_p_vals), red_dim, self.red_models, val_acc, te_acc, (ind_md_landmark_divs,ind_md_V)
+        return (od_decs, ind_od_decs, ind_od_p_vals), (md_decs, ind_md_decs, ind_md_p_vals), red_dim, self.red_models, val_acc, te_acc
 
